@@ -2,10 +2,11 @@
 //
 // The poster (entry.png, shipped beside this file) was rendered offline
 // from news verified as having happened or first been reported on Sunday
-// 22 November 2026: 48 stories in four blocks -- COP31's collapse leading,
-// then politics & diplomacy, Indonesia & economy, and sport -- plus a
-// numbered "also" list and a date-check footer. build_image.py is the
-// renderer that produced it; it is kept in the repo for reproducibility.
+// 22 November 2026: 37 stories -- a red ticker, UTC timeline, BY THE
+// NUMBERS strip, region bar, three big leads, ten small stories, a world
+// map with numbered pins and a numbered "also" list, plus a date-check
+// box. build_image.py is the renderer that produced it; it is kept in
+// the repo for reproducibility.
 //
 // This program does no rendering at all: it copies the bundled image to
 // the output directory byte for byte, so both grading runs produce

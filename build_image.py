@@ -5,12 +5,15 @@ Local build tool only: renders entry.png with Pillow + DejaVu fonts.
 The graded program is main.ts, which simply copies the bundled entry.png
 to /output/entry.png (Node stdlib only, deterministic bytes).
 
-Design: midnight-blue broadsheet with a neon-yellow accent, in four
-blocks ordered by news weight --
-  (1) COP31 + climate/environment, led by the summit's collapse;
-  (2) politics & global diplomacy; (3) Indonesia + economy; (4) sport --
-followed by a numbered "also" list, a date-check footer and sources.
-48 stories, every one verified as having happened or first been
+Design (v2): midnight-blue broadsheet with a neon-yellow accent,
+restructured to the winner pattern from ~/workspace/makefun/
+winners-study.md (Pattern 6): giant date masthead, red ticker of the
+3 biggest headlines, UTC timeline, a BY THE NUMBERS strip, a 9-region
+bar, THREE big leads with detailed illustrations, 10 small stories
+(2 rows x 5), then a world map with numbered pins beside a DATE CHECK
+box, a HOW SURE legend and a pin index, followed by a numbered "also"
+list and sources.
+37 stories, every one verified as having happened or first been
 reported on Sunday 22 November 2026 (see the research file
 news-image-20261122-research.md, refreshed 23 Nov 09:20 WIB).
 
@@ -46,6 +49,7 @@ MUTED = (168, 183, 208)      # body text on dark
 FAINT = (122, 142, 172)      # footer / small print
 RULE = (48, 68, 100)         # hairlines
 RED = (255, 110, 100)        # disaster accent (sparingly)
+GREEN = (110, 220, 130)      # CONFIRMED dot in HOW SURE legend
 
 REGION_COLORS = {
     "CLIMATE": (120, 230, 160),
@@ -79,6 +83,11 @@ _FONT_SPECS = (
     ("FOOT", "DejaVuSans.ttf", 9),
     ("NUM", "DejaVuSans-Bold.ttf", 9),
     ("ILL", "DejaVuSans-Bold.ttf", 9),      # labels inside drawings
+    ("LEAD2_H", "DejaVuSerif-Bold.ttf", 17),  # 3-col lead heads
+    ("NUM_BIG", "DejaVuSans-Bold.ttf", 26),   # BY THE NUMBERS figures
+    ("TICK", "DejaVuSans-Bold.ttf", 12),      # ticker headlines
+    ("TIME_B", "DejaVuSans-Bold.ttf", 10),    # timeline times
+    ("MAP_LAB", "DejaVuSans-Bold.ttf", 8),    # map / pin labels
 )
 
 
@@ -105,6 +114,11 @@ F_ALSO_B = _F["ALSO_B"]
 F_FOOT = _F["FOOT"]
 F_NUM = _F["NUM"]
 F_ILL = _F["ILL"]
+F_LEAD2_H = _F["LEAD2_H"]
+F_NUM_BIG = _F["NUM_BIG"]
+F_TICK = _F["TICK"]
+F_TIME_B = _F["TIME_B"]
+F_MAP_LAB = _F["MAP_LAB"]
 
 
 # -------------------------------------------------------------- helpers
@@ -530,6 +544,227 @@ def ill_umk(d, x, y, w, h):
     d.text((x + 130, y + 2), "Rp6.48 JT", font=F_ILL, fill=(150, 40, 40))
 
 
+# ------------------------------------------- lead illustrations (v2)
+# Wide strips (~324x85) for the three big leads. Each tells its story
+# at a glance: a picture on the left, the key fact in text on the right.
+
+def _mini_flag_eu(d, fx, fy, w=26, h=15):
+    d.rectangle([fx, fy, fx + w, fy + h], fill=(0, 51, 153))
+    for i in range(12):
+        ang = math.pi * i / 6
+        d.ellipse([fx + w // 2 + 5 * math.cos(ang) - 1,
+                   fy + h // 2 + 5 * math.sin(ang) - 1,
+                   fx + w // 2 + 5 * math.cos(ang) + 1,
+                   fy + h // 2 + 5 * math.sin(ang) + 1],
+                  fill=(255, 204, 0))
+
+
+def _mini_flag_uk(d, fx, fy, w=26, h=15):
+    d.rectangle([fx, fy, fx + w, fy + h], fill=(0, 36, 125))
+    d.line([(fx, fy), (fx + w, fy + h)], fill=(255, 255, 255), width=3)
+    d.line([(fx + w, fy), (fx, fy + h)], fill=(255, 255, 255), width=3)
+    d.rectangle([fx + w // 2 - 2, fy, fx + w // 2 + 2, fy + h],
+                fill=(255, 255, 255))
+    d.rectangle([fx, fy + h // 2 - 2, fx + w, fy + h // 2 + 2],
+                fill=(255, 255, 255))
+    d.rectangle([fx + w // 2 - 1, fy, fx + w // 2 + 1, fy + h],
+                fill=(207, 0, 15))
+    d.rectangle([fx, fy + h // 2 - 1, fx + w, fy + h // 2 + 1],
+                fill=(207, 0, 15))
+
+
+def _mini_flag_panama(d, fx, fy, w=26, h=15):
+    d.rectangle([fx, fy, fx + w // 2, fy + h // 2], fill=(255, 255, 255))
+    d.rectangle([fx + w // 2, fy, fx + w, fy + h // 2],
+                fill=(210, 16, 52))
+    d.rectangle([fx, fy + h // 2, fx + w // 2, fy + h], fill=(0, 84, 159))
+    d.rectangle([fx + w // 2, fy + h // 2, fx + w, fy + h],
+                fill=(255, 255, 255))
+    _star5(d, fx + 6, fy + 4, 2, (0, 84, 159))
+    _star5(d, fx + 20, fy + 11, 2, (210, 16, 52))
+
+
+def _mini_flag_marshall(d, fx, fy, w=26, h=15):
+    d.rectangle([fx, fy, fx + w, fy + h], fill=(0, 56, 147))
+    d.polygon([(fx, fy + h), (fx + 8, fy + h), (fx + w, fy + 2),
+               (fx + w, fy + 6)], fill=(255, 255, 255))
+    d.polygon([(fx, fy + h), (fx + 4, fy + h), (fx + w, fy + 4),
+               (fx + w, fy + 6)], fill=(255, 120, 0))
+    _star5(d, fx + 5, fy + 4, 2, (255, 255, 255))
+
+
+def _mini_flag_norway(d, fx, fy, w=26, h=15):
+    d.rectangle([fx, fy, fx + w, fy + h], fill=(186, 12, 47))
+    d.rectangle([fx + 7, fy, fx + 12, fy + h], fill=(255, 255, 255))
+    d.rectangle([fx, fy + 5, fx + w, fy + 10], fill=(255, 255, 255))
+    d.rectangle([fx + 8, fy, fx + 11, fy + h], fill=(0, 32, 91))
+    d.rectangle([fx, fy + 6, fx + w, fy + 9], fill=(0, 32, 91))
+
+
+def ill_lead_cop31(d, x, y, w, h):
+    """Cracked globe + NO DEAL + the five flags that said no."""
+    _sky(d, x, y, w, h, (12, 24, 48), (30, 55, 95))
+    cx, cy, r = x + 44, y + h // 2, 32
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(45, 110, 180),
+              outline=(150, 200, 240), width=2)
+    d.ellipse([cx - 20, cy - 20, cx - 3, cy - 6], fill=(110, 190, 110))
+    d.ellipse([cx + 2, cy + 2, cx + 20, cy + 18], fill=(110, 190, 110))
+    d.ellipse([cx - 24, cy + 8, cx - 11, cy + 20], fill=(110, 190, 110))
+    d.line([(cx - 23, cy - 21), (cx - 9, cy - 8), (cx - 17, cy + 5),
+            (cx - 2, cy + 17), (cx + 8, cy + 29)], fill=(8, 12, 26),
+           width=3)
+    tx = x + 88
+    d.text((tx, y + 6), "NO DEAL", font=F_LEAD2_H, fill=YELLOW)
+    d.text((tx, y + 28), "44+ HOURS OVERTIME", font=F_ILL, fill=WHITE)
+    d.text((tx, y + 42), "THE FIVE WHO SAID NO", font=F_MAP_LAB,
+           fill=YELLOW_SOFT)
+    fy = y + 56
+    flags = (_mini_flag_eu, _mini_flag_uk, _mini_flag_panama,
+             _mini_flag_marshall, _mini_flag_norway)
+    fx = tx + (w - 88 - (5 * 26 + 4 * 3)) // 2
+    for fn in flags:
+        fn(d, fx, fy)
+        d.rectangle([fx, fy, fx + 26, fy + 15],
+                    outline=(200, 210, 230))
+        fx += 29
+    d.text((tx, y + 73), "NEXT: COP32 \u00b7 ADDIS ABABA \u00b7 NOV 2027",
+           font=F_MAP_LAB, fill=MUTED)
+
+
+def ill_lead_fire(d, x, y, w, h):
+    """Burning factory + the toll in a dark panel."""
+    _sky(d, x, y, w, h, (255, 140, 40), (255, 200, 80))
+    d.rectangle([x + 14, y + 34, x + 170, y + h - 4], fill=(50, 45, 45))
+    d.rectangle([x + 170, y + 12, x + 184, y + h - 4], fill=(50, 45, 45))
+    for fx in (26, 52, 78, 104, 130):
+        d.polygon([(x + fx, y + 34), (x + fx + 7, y + 22),
+                   (x + fx + 14, y + 34)], fill=(255, 230, 120))
+    _burst(d, x + 177, y + 10, 5, color=(255, 120, 30))
+    _smoke(d, x + 190, y + 16, 0.8, color=(90, 90, 90))
+    d.text((x + 20, y + h - 18), "CIKANDE \u00b7 BANTEN", font=F_ILL,
+           fill=(255, 255, 255))
+    px, pw = x + 205, w - 213
+    d.rectangle([px, y + 8, px + pw, y + h - 8], fill=(30, 22, 20),
+                outline=(255, 200, 80), width=1)
+    d.text((px + 10, y + 12), "36", font=F_NUM_BIG, fill=YELLOW)
+    d.text((px + 62, y + 22), "MISSING", font=F_ILL, fill=WHITE)
+    d.text((px + 10, y + 46), "3 DEAD \u00b7 4 HURT", font=F_MAP_LAB,
+           fill=(255, 200, 160))
+    d.text((px + 10, y + 58), "15 SURVIVED", font=F_MAP_LAB,
+           fill=(255, 200, 160))
+
+
+def ill_lead_cartel(d, x, y, w, h):
+    """Gold badge + FBI TOP 10 + the shootout toll."""
+    d.rectangle([x, y, x + w, y + h], fill=(28, 30, 40))
+    _star5(d, x + 44, y + h // 2, 30, (220, 180, 60),
+           outline=(255, 230, 140))
+    d.ellipse([x + 33, y + h // 2 - 11, x + 55, y + h // 2 + 11],
+              fill=(28, 30, 40))
+    d.text((x + 39, y + h // 2 - 11), "$", font=F_LEAD2_H,
+           fill=(220, 180, 60))
+    tx = x + 88
+    d.text((tx, y + 6), "FBI TOP 10", font=F_LEAD2_H, fill=(255, 210, 90))
+    d.text((tx, y + 28), "CAPTURED IN SINALOA", font=F_ILL, fill=WHITE)
+    d.text((tx, y + 44), "11 KILLED IN THE SHOOTOUT", font=F_ILL,
+           fill=(255, 130, 120))
+    d.text((tx, y + 60), "FAUSTO ISIDRO MEZA FLORES", font=F_MAP_LAB,
+           fill=MUTED)
+    # police-light stripe along the bottom edge
+    for i in range(12):
+        col = (200, 40, 40) if i % 2 == 0 else (40, 90, 220)
+        d.rectangle([x + i * (w // 12), y + h - 5,
+                     x + (i + 1) * (w // 12), y + h], fill=col)
+
+
+# ------------------------------------------------------------- world map
+# Rough continent outlines in (lon, lat); projected equirectangular
+# into the map panel. Readable at poster size; the numbered pins carry
+# the precision. Lat range shown: 85..-55.
+CONTINENTS = [
+    # North America
+    [(-168, 66), (-150, 70), (-130, 71), (-115, 73), (-100, 72),
+     (-90, 74), (-80, 73), (-70, 62), (-60, 55), (-55, 52), (-60, 47),
+     (-70, 42), (-75, 35), (-80, 26), (-88, 21), (-95, 18), (-100, 20),
+     (-108, 24), (-114, 30), (-120, 36), (-125, 42), (-128, 50),
+     (-135, 57), (-150, 60), (-162, 60)],
+    # South America
+    [(-78, 8), (-70, 12), (-62, 9), (-52, 4), (-44, -3), (-36, -8),
+     (-39, -15), (-47, -24), (-53, -33), (-60, -40), (-66, -47),
+     (-69, -52), (-73, -40), (-73, -28), (-73, -18), (-79, -8), (-81, 0)],
+    # Europe
+    [(-10, 36), (-9, 43), (-3, 48), (0, 51), (5, 53), (8, 57), (12, 55),
+     (18, 56), (22, 60), (26, 66), (32, 70), (40, 68), (35, 62), (30, 58),
+     (28, 52), (25, 46), (29, 45), (24, 41), (20, 42), (16, 44), (12, 44),
+     (8, 44), (4, 42), (-1, 38)],
+    # Africa
+    [(-17, 15), (-14, 24), (-10, 31), (-4, 35), (5, 37), (12, 34),
+     (20, 32), (30, 31), (35, 28), (40, 20), (44, 12), (51, 11), (47, 4),
+     (41, -6), (38, -14), (35, -22), (33, -27), (29, -32), (23, -34),
+     (18, -34), (15, -27), (12, -18), (9, -3), (4, 4), (-6, 5), (-12, 8)],
+    # Asia
+    [(28, 45), (32, 42), (36, 36), (42, 39), (48, 38), (50, 30), (57, 26),
+     (62, 25), (67, 24), (72, 20), (77, 8), (81, 14), (86, 20), (91, 22),
+     (96, 18), (100, 14), (103, 2), (105, 9), (109, 14), (107, 19),
+     (111, 21), (116, 23), (120, 28), (122, 32), (126, 36), (128, 39),
+     (132, 43), (137, 45), (141, 42), (143, 49), (150, 55), (158, 58),
+     (168, 62), (178, 65), (172, 68), (160, 70), (145, 72), (130, 72),
+     (115, 73), (100, 75), (85, 73), (72, 72), (62, 69), (52, 68),
+     (44, 67), (36, 66), (32, 62), (30, 55), (28, 50)],
+    # Australia
+    [(113, -22), (114, -29), (116, -34), (122, -34), (127, -32),
+     (132, -32), (135, -35), (139, -37), (144, -38), (149, -37),
+     (153, -31), (153, -27), (150, -23), (146, -19), (142, -11),
+     (138, -13), (135, -15), (132, -12), (128, -14), (124, -17),
+     (119, -19)],
+    # New Guinea
+    [(131, -1), (136, -2), (141, -3), (146, -6), (150, -9), (147, -9),
+     (142, -8), (137, -7), (132, -4)],
+    # Borneo
+    [(109, 1), (113, 4), (118, 6), (119, 1), (117, -3), (112, -3),
+     (109, -1)],
+    # Sumatra
+    [(95, 5), (99, 2), (102, -2), (105, -5), (104, -6), (100, -3),
+     (97, 1)],
+    # Java
+    [(105, -6), (110, -7), (115, -8), (114, -8), (109, -7), (106, -6)],
+    # UK
+    [(-5, 50), (-3, 53), (-5, 56), (-3, 58), (0, 57), (1, 53), (-1, 51)],
+    # Japan
+    [(130, 31), (133, 34), (137, 35), (140, 37), (141, 41), (143, 44),
+     (141, 44), (140, 39), (137, 36), (133, 34), (130, 33)],
+    # New Zealand
+    [(167, -46), (170, -43), (173, -40), (175, -38), (178, -38),
+     (175, -41), (171, -44), (168, -47)],
+    # Madagascar
+    [(44, -16), (47, -15), (49, -18), (47, -24), (45, -25), (44, -20)],
+]
+
+# (story num, lon, lat, display dx, dy, pin-index label). dx/dy shift the
+# disc away from a crowded true spot; a leader line joins disc to spot.
+PINS = [
+    (1, 30, 36, 0, 0, "COP31 collapses \u00b7 Antalya"),
+    (2, 106, -6, 0, 0, "Cikande fire \u00b7 Banten"),
+    (3, -108, 25, 0, 0, "El Chapo captured \u00b7 Sinaloa"),
+    (4, 35, 32, 0, -15, "Eisenkot \u00b7 Israel"),
+    (5, 34, 31, 0, 15, "Gaza aid \u00b7 Gaza"),
+    (6, 37, 55, 14, -8, "US envoys \u00b7 Moscow"),
+    (7, 135, -25, 0, 0, "AUKUS \u00b7 Australia"),
+    (8, 56, 26, 0, 0, "Hormuz \u00b7 Strait"),
+    (9, 30, 50, -14, 6, "Kyiv power \u00b7 Ukraine"),
+    (10, 139, 35, 0, 0, "Japan cuts \u00b7 Tokyo"),
+    (12, -115, 36, 0, 0, "Las Vegas GP \u00b7 F1"),
+    (13, -3, 53, 0, 0, "Liverpool 4\u20130 \u00b7 Anfield"),
+]
+
+
+def _project(mx, my, mw, mh, lon, lat):
+    """Equirectangular: lon -180..180, lat 85..-55."""
+    px = mx + (lon + 180) / 360.0 * mw
+    py = my + (85 - lat) / 140.0 * mh
+    return px, py
+
+
 # --------------------------------------------------- sport band icons
 def icon_f1(d, x, y):
     """Checkered flag, 16x12."""
@@ -582,196 +817,154 @@ def icon_trophy(d, x, y):
 # 2026 result (Verstappen, Norris +0.639, Piastri +1.529 -- NOT the 2025
 # disqualifications); Cikande uses Reuters numbers (36 missing, 3 dead).
 
-LEAD = dict(
-    num=1, region="CLIMATE", beat="COP31 \u00b7 ANTALYA",
-    head="COP31 COLLAPSES \u2014 NO DEAL",
-    body=("The longest climate summit in history ends with no deal \u2014 "
-          "the first COP to fail since Copenhagen 2009. President Kurum: "
-          "\u201cthere is no agreement on this text.\u201d The final text "
-          "never mentions fossil fuels; the EU, UK, Panama, Marshall "
-          "Islands and Norway refuse to back it."),
-    chips=["44+ HOURS OVERTIME", "FIRST NO-DEAL COP SINCE 2009",
-           "NEXT: COP32 \u00b7 ADDIS ABABA \u00b7 NOV 2027"],
-    ill=ill_cop31,
-)
-
-# Two more climate/environment stories riding in the lead block.
-CLIMATE_EXTRA = [
-    dict(num=2, region="INDONESIA", beat="ENVIRONMENT",
-         text="RAPP loses 338,536-ha permit in Riau over environmental "
-              "breaches"),
-    dict(num=3, region="MIDDLE EAST", beat="WEATHER",
-         text="Winter storm floods Gaza shelters; 1m+ displaced face cold "
-              "and disease"),
-]
-
-# Block 2: politics & global diplomacy (medium cards, illustrated).
-POLITICS = [
-    dict(num=4, region="MIDDLE EAST", beat="POLITICS",
-         head="Eisenkot tapped to form Israel\u2019s government",
-         body="Herzog passes over Netanyahu; Eisenkot invites Likud to "
-              "coalition talks.",
-         ill=ill_eisenkot),
-    dict(num=5, region="MIDDLE EAST", beat="DIPLOMACY",
-         head="Four nations demand Gaza aid access",
-         body="Australia, Canada, Italy, UK urge open access; 150,000 "
-              "tents stuck at the border.",
-         ill=ill_gaza_aid),
-    dict(num=6, region="GLOBAL", beat="DIPLOMACY",
-         head="US envoys head to Moscow, then Dublin",
-         body="Kushner and Witkoff carry Abu Dhabi talks to Putin, then "
-              "Zelensky.",
-         ill=ill_diplomacy),
-    dict(num=7, region="AMERICAS", beat="CRIME",
+# v2: THREE big leads, all global (winner Pattern 6). No local story
+# leads the poster.
+LEADS = [
+    dict(num=1, region="GLOBAL", beat="COP31 \u00b7 ANTALYA",
+         head="COP31 COLLAPSES \u2014 NO DEAL",
+         body=("The longest climate summit ever ends with no deal \u2014 "
+               "the first COP to fail since 2009. The final text never "
+               "mentions fossil fuels."),
+         ill=ill_lead_cop31),
+    dict(num=2, region="INDONESIA", beat="DISASTER \u00b7 CIKANDE",
+         head="Factory fire: 36 missing, 3 dead",
+         body=("Rescuers search the Milkita candy plant in Banten after "
+               "Saturday\u2019s blaze. Four hurt, 15 survived; the fire "
+               "is still burning as families wait."),
+         ill=ill_lead_fire),
+    dict(num=3, region="AMERICAS", beat="CRIME \u00b7 SINALOA",
          head="\u201cEl Chapo Isidro\u201d captured; 11 killed",
-         body="Fausto Isidro Meza Flores seized after a shootout in "
-              "Guasave, Sinaloa.",
-         ill=ill_cartel),
-    dict(num=8, region="OCEANIA", beat="DEFENCE",
-         head="Australia slams US budget office over AUKUS",
-         body="Marles calls the CBO \u201cwrong\u201d on Virginia-class "
-              "sales shrinking the US fleet.",
-         ill=ill_aukus),
-    dict(num=9, region="MIDDLE EAST", beat="ENERGY",
-         head="Iran shortens Hormuz reopening plan to two days",
-         body="Tehran cuts the timeline amid the tanker war and the US "
-              "blockade.",
-         ill=ill_hormuz),
-    dict(num=10, region="EUROPE", beat="WAR",
+         body=("Fausto Isidro Meza Flores, one of the FBI\u2019s 10 most "
+               "wanted, is seized after a shootout in Guasave, Sinaloa. "
+               "At least 11 people are killed."),
+         ill=ill_lead_cartel),
+]
+
+TICKER = ["COP31 COLLAPSES \u2014 NO DEAL",
+          "CIKANDE FIRE: 36 MISSING, 3 DEAD",
+          "\u201cEL CHAPO ISIDRO\u201d CAPTURED; 11 KILLED"]
+
+# (UTC time, event) -- key moments of the day, in order.
+TIMELINE = [
+    ("01:25", "\u201cEl Chapo Isidro\u201d captured"),
+    ("03:56", "Cikande search begins"),
+    ("06:00", "COP31 ends with no deal"),
+    ("14:00", "Hull 2\u20130 Brighton"),
+    ("16:30", "Liverpool 4\u20130 Man Utd"),
+]
+
+# (big figure, label) -- six verified numbers, one per column.
+NUMBERS = [
+    ("36", "MISSING IN THE CIKANDE FACTORY FIRE"),
+    ("44+", "HOURS OF COP31 OVERTIME"),
+    ("11", "KILLED IN THE SINALOA SHOOTOUT"),
+    ("150,000", "TENTS STUCK AT THE GAZA BORDER"),
+    ("4\u20130", "LIVERPOOL ROUT MAN UTD"),
+    ("$60K", "BITCOIN RETAKES $60,000"),
+]
+
+# (region, story count) -- 9 regions, 37 stories, ordered by count.
+REGIONS = [
+    ("EUROPE", 9), ("INDONESIA", 8), ("GLOBAL", 6), ("MIDDLE EAST", 4),
+    ("SPORT", 4), ("AMERICAS", 3), ("ASIA", 1), ("OCEANIA", 1),
+    ("AFRICA", 1),
+]
+
+# 10 small stories (2 rows x 5): kicker band + 2-line headline, no body.
+# kicker = the big stat/keyword; icon = sport icon or None.
+SMALL = [
+    dict(num=4, region="MIDDLE EAST", beat="POLITICS",
+         kicker="EISENKOT",
+         head="Eisenkot tapped to form Israel\u2019s government",
+         icon=None),
+    dict(num=5, region="MIDDLE EAST", beat="DIPLOMACY",
+         kicker="150,000 TENTS",
+         head="Four nations demand Gaza aid access",
+         icon=None),
+    dict(num=6, region="GLOBAL", beat="DIPLOMACY",
+         kicker="MOSCOW \u2192 DUBLIN",
+         head="US envoys head to Moscow, then Dublin",
+         icon=None),
+    dict(num=7, region="OCEANIA", beat="DEFENCE",
+         kicker="VIRGINIA CLASS",
+         head="Australia slams US office over AUKUS",
+         icon=None),
+    dict(num=8, region="MIDDLE EAST", beat="ENERGY",
+         kicker="2 DAYS",
+         head="Iran shortens Hormuz reopening to two days",
+         icon=None),
+    dict(num=9, region="EUROPE", beat="WAR",
+         kicker="3 PLANTS DOWN",
          head="Ukraine\u2019s energy crisis deepens before winter",
-         body="Strikes knock out heat and power; Kyiv loses all three "
-              "heating plants.",
-         ill=ill_ukraine_power),
-    dict(num=11, region="ASIA", beat="DEFENCE",
+         icon=None),
+    dict(num=10, region="ASIA", beat="DEFENCE",
+         kicker="CUTS",
          head="Japan weighs cutting missile and warship buys",
-         body="Nikkei: Tokyo reviews its security build-up under budget "
-              "pressure.",
-         ill=ill_japan),
-]
-
-# Block 3: Indonesia + economy (medium cards, illustrated).
-INDONESIA = [
-    dict(num=12, region="INDONESIA", beat="DISASTER",
-         head="Factory fire in Cikande: 36 missing, 3 dead",
-         body="Rescuers search the Milkita candy plant in Banten; 4 hurt, "
-              "15 survived.",
-         ill=ill_fire),
-    dict(num=13, region="INDONESIA", beat="POLITICS",
-         head="Prabowo to name two VP candidates on 25 Nov",
-         body="Two names go to the MPR; election and inauguration set for "
-              "9 December.",
-         ill=ill_prabowo),
-    dict(num=14, region="INDONESIA", beat="POLITICS",
-         head="Mahfud: recount the MPR session to replace Gibran",
-         body="Mahfud MD: count 14 working days from the President\u2019s "
-              "submission.",
-         ill=ill_mahfud),
-    dict(num=15, region="GLOBAL", beat="MARKETS",
+         icon=None),
+    dict(num=11, region="GLOBAL", beat="MARKETS",
+         kicker="BTC $60K",
          head="Bitcoin climbs back above $60,000",
-         body="After plunging to $55,300, its lowest since September "
-              "2024, BTC retakes $60,000.",
-         ill=ill_btc),
-    dict(num=16, region="INDONESIA", beat="ECONOMY",
-         head="Jakarta\u2019s 2027 minimum wage hits Rp6.13m",
-         body="Up 7.1% \u2014 the highest provincial wage in Indonesia.",
-         ill=ill_ump),
-    dict(num=17, region="INDONESIA", beat="TRADE",
-         head="Coal, CPO, ferroalloy exports to run via DSI",
-         body="From 1 January 2027, three strategic exports must go via "
-              "Danantara\u2019s DSI.",
-         ill=ill_dsi),
-    dict(num=18, region="INDONESIA", beat="EDUCATION",
-         head="242,482 part-time teachers go full-time in 2027",
-         body="PPPK teachers convert without a test from 1 January.",
-         ill=ill_pppk),
-    dict(num=19, region="INDONESIA", beat="ECONOMY",
-         head="Bekasi\u2019s 2027 wage Rp6.48m, highest in Indonesia",
-         body="City UMK Rp6,480,058, up 8.01%; regency Rp6,427,655. Both "
-              "await confirmation.",
-         ill=ill_umk),
-]
-
-# Block 4: sport (score-band cards, no illustration strip).
-SPORTS = [
-    dict(num=20, region="SPORT", beat="F1 \u00b7 LAS VEGAS GP",
-         score="VERSTAPPEN WINS",
-         body="From pole in 1:27:39.624; Norris +0.639, Piastri +1.529. "
-              "35 lead changes; Russell hits the wall on lap 48.",
+         icon=None),
+    dict(num=12, region="SPORT", beat="F1 \u00b7 LAS VEGAS GP",
+         kicker="VERSTAPPEN WINS",
+         head="Verstappen wins Las Vegas GP from pole",
          icon=icon_f1),
-    dict(num=21, region="SPORT", beat="PREMIER LEAGUE",
-         score="LIV 4\u20130 MAN UTD",
-         body="Szoboszlai 10\u2019, Wirtz 13\u2019, Ngumoha 66\u2019, Munoz "
-              "82\u2019. Yoro sent off at 8\u2019. Pochettino\u2019s first "
-              "game.",
+    dict(num=13, region="SPORT", beat="PREMIER LEAGUE",
+         kicker="LIV 4\u20130 MAN UTD",
+         head="Liverpool rout United in Pochettino\u2019s debut",
          icon=icon_ball),
-    dict(num=22, region="SPORT", beat="PREMIER LEAGUE",
-         score="HULL 2\u20130 BRIGHTON",
-         body="McBurnie scores twice in injury time (90+2\u2019, "
-              "90+5\u2019). Costinha sent off at 89\u2019.",
-         icon=icon_ball),
-    dict(num=23, region="SPORT", beat="NWSL FINAL",
-         score="KC WIN NWSL TITLE",
-         body="First title, 2\u20131 over Washington Spirit. "
-              "DiBernardo\u2019s corner (54\u2019), Debinha in injury "
-              "time; Rodman replies at 98\u2019.",
-         icon=icon_trophy),
-    dict(num=24, region="SPORT", beat="NBA",
-         score="SPURS CRUISE 114\u201391",
-         body="Pelicans beaten at home. San Antonio cruise in the "
-              "regular season.",
-         icon=icon_basket),
 ]
 
 # (num, place, text, region) -- one line each, no sub-line.
 ALSO = [
-    (25, "Berlin", "Germany plans a new national fare for occasional "
-     "transit users", "EUROPE"),
-    (26, "Berlin", "Health minister: insurance contributions stable "
-     "through 2027", "EUROPE"),
-    (27, "Kyiv", "Zelensky faults lack of US intel warning before "
-     "Russian strikes", "EUROPE"),
-    (28, "Washington", "House revises college sports bill to allow "
-     "22-team leagues", "AMERICAS"),
-    (29, "Rome", "Italy budget bill lifts flat tax cap to \u20ac100,000",
-     "EUROPE"),
-    (30, "Stuttgart", "Bosch deepens AI partnership with Microsoft",
-     "EUROPE"),
-    (31, "Wolfsburg", "Volkswagen plans to freeze pay rises in cost "
-     "push", "EUROPE"),
-    (32, "Frankfurt", "Lufthansa to cut 1,000 jobs as fuel costs bite",
-     "EUROPE"),
-    (33, "Jakarta", "BMKG: rain possible in 38 regions today",
+    (14, "Jakarta", "Prabowo to name two VP candidates on 25 Nov",
      "INDONESIA"),
-    (34, "Jakarta", "OJK sanctions 10 stock-trading cases; Rp23.77bn "
-     "illegal gains to be returned", "INDONESIA"),
-    (35, "Jakarta", "New rail timetable from 1 Dec: 79 trains from "
-     "Gambir and Pasarsenen", "INDONESIA"),
-    (36, "Jakarta", "Madrasah exams start 23 Nov; semester break from "
-     "21 Dec", "INDONESIA"),
-    (37, "Jakarta", "Vehicle tax amnesty still open in 7 provinces "
-     "into December", "INDONESIA"),
-    (38, "Tangerang", "IMOS day 2: Honda shows new Super Cub C125, "
-     "Vario Evo, ADV 160", "INDONESIA"),
-    (39, "Mercury", "BepiColombo\u2019s MIXS X-ray telescope sends first "
-     "cosmic views", "GLOBAL"),
-    (40, "Orbit", "China\u2019s broadband constellations left 52 rocket "
-     "bodies in low orbit", "GLOBAL"),
-    (41, "Gaming", "GTA 6: critics score it 99, users just 5.6 \u2014 "
-     "review bombing suspected", "GLOBAL"),
-    (42, "Lagos", "Young Nigerians register to vote in lower numbers "
+    (15, "Jakarta", "Mahfud: recount the MPR session to replace Gibran",
+     "INDONESIA"),
+    (16, "Riau", "RAPP loses 338,536-ha permit over environmental "
+     "breaches", "INDONESIA"),
+    (17, "Gaza", "Winter storm floods shelters; 1m+ displaced face cold",
+     "MIDDLE EAST"),
+    (18, "Kyiv", "Zelensky faults lack of US intel warning before "
+     "Russian strikes", "EUROPE"),
+    (19, "Berlin", "Germany plans a new national fare for occasional "
+     "transit users", "EUROPE"),
+    (20, "Berlin", "Health minister: insurance contributions stable "
+     "through 2027", "EUROPE"),
+    (21, "Washington", "House revises college sports bill to allow "
+     "22-team leagues", "AMERICAS"),
+    (22, "Rome", "Italy budget bill lifts flat tax cap to \u20ac100,000",
+     "EUROPE"),
+    (23, "Stuttgart", "Bosch deepens AI partnership with Microsoft",
+     "EUROPE"),
+    (24, "Wolfsburg", "Volkswagen plans to freeze pay rises in cost "
+     "push", "EUROPE"),
+    (25, "Frankfurt", "Lufthansa to cut 1,000 jobs as fuel costs bite",
+     "EUROPE"),
+    (26, "Jakarta", "Jakarta\u2019s 2027 minimum wage hits Rp6.13m, "
+     "highest in RI", "INDONESIA"),
+    (27, "Jakarta", "Coal, CPO, ferroalloy exports to run via DSI from "
+     "2027", "INDONESIA"),
+    (28, "Jakarta", "242,482 part-time teachers go full-time in 2027",
+     "INDONESIA"),
+    (29, "Jakarta", "OJK sanctions 10 stock cases; Rp23.77bn gains "
+     "returned", "INDONESIA"),
+    (30, "Hull", "Hull 2\u20130 Brighton as McBurnie scores twice in "
+     "injury time", "SPORT"),
+    (31, "Washington", "KC Current win first NWSL title, 2\u20131 over "
+     "Spirit", "SPORT"),
+    (32, "Mercury", "BepiColombo\u2019s MIXS telescope sends first cosmic "
+     "views", "GLOBAL"),
+    (33, "Orbit", "China\u2019s broadband constellations left 52 rocket "
+     "bodies", "GLOBAL"),
+    (34, "Gaming", "GTA 6: critics score it 99, users just 5.6",
+     "GLOBAL"),
+    (35, "Lagos", "Young Nigerians register to vote in lower numbers "
      "than in 2023", "AFRICA"),
-    (43, "USA", "Teen gamer and his mother help the FBI rescue a "
+    (36, "USA", "Teen gamer and his mother help the FBI rescue a "
      "missing girl", "AMERICAS"),
-    (44, "London", "Princess of Wales fronts papers ahead of her new "
+    (37, "London", "Princess of Wales fronts papers ahead of her new "
      "documentary", "EUROPE"),
-    (45, "London", "Parents urged to spot the warning signs of online "
-     "stalking", "EUROPE"),
-    (46, "London", "Service stations transform from pit stops into "
-     "destinations", "EUROPE"),
-    (47, "London", "Employers urged to give interview feedback to "
-     "every applicant", "EUROPE"),
-    (48, "London", "Nicola Coughlan\u2019s new drama \u201cI Am Helen\u201d "
-     "divides critics", "EUROPE"),
 ]
 
 DATE_CHECK = ("DATE CHECK \u2014 left out on purpose, they broke before "
@@ -789,21 +982,25 @@ FOOTER_L2 = ("Sources: Reuters, BBC, AP, Formula 1, Sky Sports, "
 # ------------------------------------------------------------------ layout
 # Vertical plan (1024 tall, all sections measured, nothing overflows):
 #   top bar 7 / rule 25 / masthead 28 / yellow rule 87
-#   lead panel 92..260 / block 2 header 266, cards 284..492
-#   block 3 header 498, cards 516..724 / sport header 730, row 748..826
-#   also header 832, list 850..976 / footer 982..1013
-MED_W = (CW - 3 * 8) // 4          # 243
-MED_H = 102
-SPORT_W = (CW - 4 * 9) // 5        # 192
-SPORT_H = 78
-LEAD_Y0, LEAD_Y1 = 92, 260
-ILL_X, ILL_Y, ILL_W, ILL_H = 806, 100, 196, 152
+#   ticker 90..112 / timeline 114..134 / numbers 136..192
+#   regions 194..214 / leads 216..406 / small header 412, rows 428..584
+#   map header 590, map+right col 606..800 / also header 806, list 824..950
+#   footer 956..1013
+LEAD_W = (CW - 2 * 8) // 3          # 326
+LEAD_H = 190
+LEAD_Y = 216
+SMALL_W = (CW - 4 * 8) // 5         # 192
+SMALL_H = 77
+SMALL_Y0 = 428
+MAP_X, MAP_Y, MAP_W, MAP_H = MX, 606, 400, 194
+RIGHT_X, RIGHT_W = 430, 580
+ALSO_Y0 = 824
 
 
 def draw_top(d):
     d.text((MX, 7), "ONE DAY OF WORLD NEWS \u00b7 ONE PICTURE", font=F_TOP,
            fill=YELLOW)
-    r = "48 STORIES \u00b7 10 REGIONS \u00b7 ALL FROM THIS SUNDAY"
+    r = "37 STORIES \u00b7 9 REGIONS \u00b7 ALL FROM THIS SUNDAY"
     d.text((W - MX - d.textlength(r, font=F_TOP_R), 7), r, font=F_TOP_R,
            fill=MUTED)
     d.line([(MX, 25), (W - MX, 25)], fill=RULE, width=1)
@@ -816,32 +1013,82 @@ def draw_masthead(d):
     d.line([(MX, 87), (W - MX, 87)], fill=YELLOW, width=2)
 
 
-def draw_lead(d):
-    d.rectangle([MX, LEAD_Y0, W - MX, LEAD_Y1], fill=PANEL, outline=RULE,
+def draw_ticker(d):
+    """Red breaking-news band: the 3 biggest headlines."""
+    d.rectangle([MX, 90, W - MX, 112], fill=(140, 25, 25))
+    line = " \u25cf ".join(TICKER)
+    lw = d.textlength(line, font=F_TICK)
+    d.text(((W - lw) / 2, 94), line, font=F_TICK, fill=WHITE)
+
+
+def draw_timeline(d):
+    """UTC timeline: five key moments of the day, in order."""
+    x = MX
+    d.text((x, 117), "UTC TIMELINE", font=F_TIME_B, fill=YELLOW)
+    x += d.textlength("UTC TIMELINE  ", font=F_TIME_B)
+    for i, (t, ev) in enumerate(TIMELINE):
+        if i:
+            d.text((x, 117), "\u00b7", font=F_ALSO, fill=MUTED)
+            x += d.textlength("\u00b7 ", font=F_ALSO)
+        d.text((x, 117), t, font=F_TIME_B, fill=YELLOW_SOFT)
+        x += d.textlength(t + " ", font=F_TIME_B)
+        d.text((x, 117), ev, font=F_ALSO, fill=MUTED)
+        x += d.textlength(ev + " ", font=F_ALSO)
+    d.line([(MX, 134), (W - MX, 134)], fill=RULE, width=1)
+
+
+def draw_numbers(d):
+    """BY THE NUMBERS strip: label cell + 6 big-stat columns."""
+    d.rectangle([MX, 136, W - MX, 192], fill=PANEL, outline=RULE, width=1)
+    lx = MX
+    d.rectangle([lx, 136, lx + 120, 192], fill=PANEL2)
+    d.text((lx + 12, 150), "BY THE", font=F_TOP, fill=YELLOW)
+    d.text((lx + 12, 164), "NUMBERS", font=F_TOP, fill=YELLOW)
+    cols = (CW - 120) // 6
+    for i, (big, label) in enumerate(NUMBERS):
+        cx = MX + 120 + i * cols
+        if i:
+            d.line([(cx, 140), (cx, 188)], fill=RULE, width=1)
+        d.text((cx + 8, 141), big, font=F_NUM_BIG, fill=YELLOW)
+        text_block(d, cx + 8, 171, label, F_MAP_LAB, cols - 14,
+                   MUTED, 10, max_lines=2)
+
+
+def draw_regions(d):
+    """9-region bar: segment widths proportional to story counts."""
+    total = sum(n for _, n in REGIONS)
+    x = MX
+    for name, n in REGIONS:
+        seg = CW * n // total
+        col = REGION_COLORS[name]
+        d.rectangle([x, 194, x + seg - 1, 214], fill=col)
+        if seg >= 60:
+            lab = "%s %d" % (name, n)
+            lw = d.textlength(lab, font=F_MAP_LAB)
+            d.text((x + (seg - lw) / 2, 200), lab, font=F_MAP_LAB,
+                   fill=(10, 16, 30))
+        else:
+            lab = "%d" % n
+            lw = d.textlength(lab, font=F_MAP_LAB)
+            d.text((x + (seg - lw) / 2, 200), lab, font=F_MAP_LAB,
+                   fill=(10, 16, 30))
+        x += seg
+
+
+def draw_lead3(d, s, x, y):
+    """One of the three big leads: illustration + tag + head + body."""
+    col = REGION_COLORS[s["region"]]
+    d.rectangle([x, y, x + LEAD_W, y + LEAD_H], fill=CARD, outline=RULE,
                 width=1)
-    d.rectangle([MX, LEAD_Y0, MX + 6, LEAD_Y1], fill=YELLOW)
-    # illustration, right
-    LEAD["ill"](d, ILL_X, ILL_Y, ILL_W, ILL_H)
-    d.rectangle([ILL_X, ILL_Y, ILL_X + ILL_W, ILL_Y + ILL_H], outline=RULE,
-                width=1)
-    tag = "%02d \u00b7 %s \u00b7 %s" % (LEAD["num"], LEAD["region"],
-                                       LEAD["beat"])
-    d.text((30, 100), tag, font=F_TAG, fill=YELLOW)
-    d.text((30, 118), LEAD["head"], font=F_LEAD_H, fill=YELLOW)
-    text_block(d, 30, 162, LEAD["body"], F_LEAD_B, 752, WHITE, 15,
-               max_lines=3)
-    cx = 30
-    for c in LEAD["chips"]:
-        cx = chip(d, cx, 212, c)
-    d.line([(30, 236), (790, 236)], fill=RULE, width=1)
-    # the two extra climate stories, one line each, side by side
-    halves = [(30, 470), (510, 480)]
-    for s, (hx, hw) in zip(CLIMATE_EXTRA, halves):
-        col = REGION_COLORS[s["region"]]
-        pre = "%02d \u00b7 " % s["num"]
-        d.text((hx, 241), pre, font=F_ALSO_B, fill=col)
-        tx = hx + d.textlength(pre, font=F_ALSO_B)
-        d.text((tx, 241), s["text"], font=F_ALSO, fill=WHITE)
+    s["ill"](d, x + 1, y + 1, LEAD_W - 2, 85)
+    d.rectangle([x, y, x + LEAD_W, y + 86], outline=RULE, width=1)
+    badge(d, x + 4, y + 90, s["num"], col)
+    tag = "%s \u00b7 %s" % (s["region"], s["beat"])
+    d.text((x + 24, y + 92), tag, font=F_TAG, fill=col)
+    text_block(d, x + 4, y + 106, s["head"], F_LEAD2_H, LEAD_W - 8,
+               WHITE, 20, max_lines=2)
+    text_block(d, x + 4, y + 148, s["body"], F_MED_B, LEAD_W - 8, MUTED,
+               13, max_lines=3)
 
 
 def draw_block_header(d, y, title, span):
@@ -851,33 +1098,74 @@ def draw_block_header(d, y, title, span):
            font=F_TOP_R, fill=MUTED)
 
 
-def draw_medium(d, s, x, y):
+def draw_small(d, s, x, y):
+    """One small story: kicker band + tag + 2-line headline."""
     col = REGION_COLORS[s["region"]]
-    d.rectangle([x, y, x + MED_W, y + MED_H], fill=CARD, outline=RULE,
+    d.rectangle([x, y, x + SMALL_W, y + SMALL_H], fill=CARD, outline=RULE,
                 width=1)
-    s["ill"](d, x + 1, y + 1, MED_W - 2, 30)
-    d.rectangle([x, y, x + MED_W, y + 31], outline=RULE, width=1)
-    badge(d, x + 4, y + 34, s["num"], col)
-    tag = "%s \u00b7 %s" % (s["region"], s["beat"])
-    d.text((x + 24, y + 36), tag, font=F_TAG, fill=col)
-    text_block(d, x + 4, y + 50, s["head"], F_MED_H, MED_W - 8, WHITE,
-               14, max_lines=2)
-    text_block(d, x + 4, y + 79, s["body"], F_MED_B, MED_W - 8, MUTED,
-               11, max_lines=2)
-
-
-def draw_sport(d, s, x, y):
-    col = REGION_COLORS[s["region"]]
-    d.rectangle([x, y, x + SPORT_W, y + SPORT_H], fill=CARD, outline=RULE,
-                width=1)
-    d.rectangle([x + 1, y + 1, x + SPORT_W - 1, y + 25], fill=PANEL2)
-    d.text((x + 6, y + 6), s["score"], font=F_SCORE, fill=YELLOW)
-    s["icon"](d, x + SPORT_W - 24, y + 5)
+    d.rectangle([x + 1, y + 1, x + SMALL_W - 1, y + 25], fill=PANEL2)
+    d.text((x + 6, y + 6), s["kicker"], font=F_SCORE, fill=YELLOW)
+    if s["icon"] is not None:
+        s["icon"](d, x + SMALL_W - 24, y + 5)
     badge(d, x + 4, y + 28, s["num"], col)
     tag = "%s \u00b7 %s" % (s["region"], s["beat"])
     d.text((x + 24, y + 30), tag, font=F_TAG, fill=col)
-    text_block(d, x + 4, y + 44, s["body"], F_SPORT_B, SPORT_W - 8,
-               MUTED, 11, max_lines=3)
+    text_block(d, x + 4, y + 44, s["head"], F_MED_H, SMALL_W - 8, WHITE,
+               14, max_lines=2)
+
+
+def draw_map(d):
+    """World map: dark ocean, green continents, numbered pins."""
+    d.rectangle([MAP_X, MAP_Y, MAP_X + MAP_W, MAP_Y + MAP_H],
+                fill=(16, 32, 60), outline=RULE, width=1)
+    for poly in CONTINENTS:
+        pts = [_project(MAP_X + 6, MAP_Y + 6, MAP_W - 12, MAP_H - 12,
+                        lon, lat) for lon, lat in poly]
+        d.polygon(pts, fill=(110, 140, 110), outline=(70, 100, 70))
+    for num, lon, lat, dx, dy, _label in PINS:
+        px, py = _project(MAP_X + 6, MAP_Y + 6, MAP_W - 12, MAP_H - 12,
+                          lon, lat)
+        cx, cy = px + dx, py + dy
+        if dx or dy:
+            d.line([(px, py), (cx, cy)], fill=YELLOW_SOFT, width=1)
+        d.ellipse([cx - 7, cy - 7, cx + 7, cy + 7], fill=YELLOW,
+                  outline=(10, 16, 30), width=1)
+        lab = "%d" % num
+        lw = d.textlength(lab, font=F_MAP_LAB)
+        d.text((cx - lw / 2, cy - 5), lab, font=F_MAP_LAB,
+               fill=(10, 16, 30))
+
+
+def draw_datecheck(d, x, y, w):
+    """DATE CHECK box: stories deliberately left out."""
+    d.rectangle([x, y, x + w, y + 60], fill=PANEL, outline=YELLOW, width=1)
+    d.text((x + 8, y + 6), "DATE CHECK", font=F_TIME_B, fill=YELLOW)
+    body = "L" + DATE_CHECK[14:]
+    text_block(d, x + 8, y + 22, body, F_FOOT, w - 16, WHITE, 12,
+               max_lines=3)
+
+
+def draw_howsure(d, x, y, w):
+    """HOW SURE legend: confidence levels of the stories."""
+    d.text((x, y), "HOW SURE", font=F_TIME_B, fill=YELLOW)
+    items = [(GREEN, "CONFIRMED"), (YELLOW, "OFFICIAL"),
+             ((255, 140, 0), "REPORTED")]
+    ix = x + 90
+    for col, lab in items:
+        d.ellipse([ix, y + 2, ix + 8, y + 10], fill=col)
+        d.text((ix + 12, y), lab, font=F_ALSO_B, fill=WHITE)
+        ix += 12 + d.textlength(lab, font=F_ALSO_B) + 28
+
+
+def draw_pin_index(d, x, y):
+    """PIN INDEX: the 12 numbered map pins, 2 columns x 6 rows."""
+    d.text((x, y), "PIN INDEX", font=F_TIME_B, fill=YELLOW)
+    colw = (RIGHT_W - 8) // 2
+    for i, (num, _lon, _lat, _dx, _dy, label) in enumerate(PINS):
+        cx = x + (i // 6) * (colw + 8)
+        ry = y + 14 + (i % 6) * 12
+        d.text((cx, ry), "%d" % num, font=F_ALSO_B, fill=YELLOW)
+        d.text((cx + 16, ry), label, font=F_ALSO, fill=MUTED)
 
 
 def draw_also(d):
@@ -886,7 +1174,7 @@ def draw_also(d):
     for ci, chunk in enumerate((ALSO[:half], ALSO[half:])):
         cx = col_x[ci]
         for ri, (num, place, text, region) in enumerate(chunk):
-            ry = 850 + ri * 10.5
+            ry = ALSO_Y0 + ri * 10.5
             col = REGION_COLORS[region]
             pre = "%d. %s: " % (num, place)
             d.text((cx, ry), pre, font=F_ALSO_B, fill=col)
@@ -895,9 +1183,9 @@ def draw_also(d):
 
 
 def draw_footer(d):
-    d.text((MX, 982), DATE_CHECK, font=F_FOOT, fill=YELLOW_SOFT)
-    d.text((MX, 993), FOOTER_L1, font=F_FOOT, fill=MUTED)
-    d.text((MX, 1004), FOOTER_L2, font=F_FOOT, fill=FAINT)
+    d.line([(MX, 956), (W - MX, 956)], fill=RULE, width=1)
+    d.text((MX, 963), FOOTER_L1, font=F_FOOT, fill=MUTED)
+    d.text((MX, 975), FOOTER_L2, font=F_FOOT, fill=FAINT)
 
 
 def build():
@@ -906,20 +1194,23 @@ def build():
     d.rectangle([0, 0, W - 1, H - 1], outline=RULE, width=2)
     draw_top(d)
     draw_masthead(d)
-    draw_lead(d)
-    draw_block_header(d, 266, "POLITICS & DIPLOMACY", "STORIES 04\u201311")
+    draw_ticker(d)
+    draw_timeline(d)
+    draw_numbers(d)
+    draw_regions(d)
+    for i, s in enumerate(LEADS):
+        draw_lead3(d, s, MX + i * (LEAD_W + 8), LEAD_Y)
+    draw_block_header(d, 412, "MORE OF THE DAY", "STORIES 04\u201313")
     for r in range(2):
-        for i, s in enumerate(POLITICS[r * 4:(r + 1) * 4]):
-            draw_medium(d, s, MX + i * (MED_W + 8), 284 + r * 106)
-    draw_block_header(d, 498, "INDONESIA & ECONOMY", "STORIES 12\u201319")
-    for r in range(2):
-        for i, s in enumerate(INDONESIA[r * 4:(r + 1) * 4]):
-            draw_medium(d, s, MX + i * (MED_W + 8), 516 + r * 106)
-    draw_block_header(d, 730, "SPORT", "STORIES 20\u201324")
-    for i, s in enumerate(SPORTS):
-        draw_sport(d, s, MX + i * (SPORT_W + 9), 748)
-    draw_block_header(d, 832, "ALSO ON SUNDAY 22 NOVEMBER",
-                      "STORIES 25\u201348")
+        for i, s in enumerate(SMALL[r * 5:(r + 1) * 5]):
+            draw_small(d, s, MX + i * (SMALL_W + 8), SMALL_Y0 + r * 79)
+    draw_block_header(d, 590, "WHERE IT HAPPENED", "12 PINNED STORIES")
+    draw_map(d)
+    draw_datecheck(d, RIGHT_X, 606, RIGHT_W)
+    draw_howsure(d, RIGHT_X, 676, RIGHT_W)
+    draw_pin_index(d, RIGHT_X, 706)
+    draw_block_header(d, 806, "ALSO ON SUNDAY 22 NOVEMBER",
+                      "STORIES 14\u201337")
     draw_also(d)
     draw_footer(d)
     return img
@@ -939,58 +1230,97 @@ def check_fit():
     def note(where, detail):
         problems.append("%s: %s" % (where, detail))
 
-    if d.textlength(LEAD["head"], font=F_LEAD_H) > 752:
-        note("lead head", "too wide")
-    rows = wrap(d, LEAD["body"], F_LEAD_B, 752)
-    if len(rows) > 3:
-        note("lead body", "%d lines" % len(rows))
-    total = sum(d.textlength(c, font=F_CHIP) + 16 for c in LEAD["chips"])
-    total += 8 * (len(LEAD["chips"]) - 1)
-    if total > 752:
-        note("lead chips", "%.0f px wide" % total)
-    for s, hw in zip(CLIMATE_EXTRA, (470, 480)):
-        pre = "%02d \u00b7 " % s["num"]
-        got = d.textlength(pre, font=F_ALSO_B) + d.textlength(
-            s["text"], font=F_ALSO)
-        if got > hw:
-            note("climate #%d" % s["num"], "%.0f px > %d" % (got, hw))
-    for s in POLITICS + INDONESIA:
+    # top bar + masthead
+    r = "37 STORIES \u00b7 9 REGIONS \u00b7 ALL FROM THIS SUNDAY"
+    if d.textlength(r, font=F_TOP_R) > 400:
+        note("top right", "too wide")
+    if d.textlength("Sunday, 22 November 2026", font=F_MAST) > CW:
+        note("masthead", "too wide")
+    # ticker: one line, centred in the red band
+    tick = " \u25cf ".join(TICKER)
+    if d.textlength(tick, font=F_TICK) > CW - 16:
+        note("ticker", "%.0f px > %d"
+             % (d.textlength(tick, font=F_TICK), CW - 16))
+    # timeline: label + 5 items on one line
+    tl = d.textlength("UTC TIMELINE  ", font=F_TIME_B)
+    for i, (t, ev) in enumerate(TIMELINE):
+        if i:
+            tl += d.textlength("\u00b7 ", font=F_ALSO)
+        tl += d.textlength(t + " ", font=F_TIME_B)
+        tl += d.textlength(ev + " ", font=F_ALSO)
+    if tl > CW:
+        note("timeline", "%.0f px > %d" % (tl, CW))
+    # BY THE NUMBERS: big figures + 2-line labels
+    cols = (CW - 120) // 6
+    for big, label in NUMBERS:
+        if d.textlength(big, font=F_NUM_BIG) > cols - 16:
+            note("numbers %s" % big, "too wide")
+        if len(wrap(d, label, F_MAP_LAB, cols - 14)) > 2:
+            note("numbers %s" % big, "label > 2 lines")
+    # region bar: labels must fit their segments
+    total = sum(n for _, n in REGIONS)
+    for name, n in REGIONS:
+        seg = CW * n // total
+        if seg >= 60:
+            lab = "%s %d" % (name, n)
+            if d.textlength(lab, font=F_MAP_LAB) > seg - 4:
+                note("region %s" % name, "label too wide")
+    # three leads: tag, 2-line head, 3-line body
+    for s in LEADS:
         tag = "%s \u00b7 %s" % (s["region"], s["beat"])
-        if d.textlength(tag, font=F_TAG) > MED_W - 28:
+        if d.textlength(tag, font=F_TAG) > LEAD_W - 28:
+            note("lead #%d tag" % s["num"], "too wide")
+        heads = wrap(d, s["head"], F_LEAD2_H, LEAD_W - 8)
+        if len(heads) > 2:
+            note("lead #%d head" % s["num"], "%d lines" % len(heads))
+        bodies = wrap(d, s["body"], F_MED_B, LEAD_W - 8)
+        if len(bodies) > 3:
+            note("lead #%d body" % s["num"], "%d lines" % len(bodies))
+    # small stories: kicker, tag, 2-line head
+    for s in SMALL:
+        lim = SMALL_W - 32 if s["icon"] is not None else SMALL_W - 12
+        if d.textlength(s["kicker"], font=F_SCORE) > lim:
+            note("#%d kicker" % s["num"], "too wide")
+        tag = "%s \u00b7 %s" % (s["region"], s["beat"])
+        if d.textlength(tag, font=F_TAG) > SMALL_W - 28:
             note("#%d tag" % s["num"], "too wide")
-        heads = wrap(d, s["head"], F_MED_H, MED_W - 8)
+        heads = wrap(d, s["head"], F_MED_H, SMALL_W - 8)
         if len(heads) > 2:
             note("#%d head" % s["num"], "%d lines" % len(heads))
-        bodies = wrap(d, s["body"], F_MED_B, MED_W - 8)
-        if len(bodies) > 2:
-            note("#%d body" % s["num"], "%d lines" % len(bodies))
-    for s in SPORTS:
-        if d.textlength(s["score"], font=F_SCORE) > SPORT_W - 32:
-            note("#%d score" % s["num"], "too wide")
-        tag = "%s \u00b7 %s" % (s["region"], s["beat"])
-        if d.textlength(tag, font=F_TAG) > SPORT_W - 28:
-            note("#%d tag" % s["num"], "too wide")
-        bodies = wrap(d, s["body"], F_SPORT_B, SPORT_W - 8)
-        if len(bodies) > 3:
-            note("#%d body" % s["num"], "%d lines" % len(bodies))
+    # date-check box body: 3 lines max
+    body = "L" + DATE_CHECK[14:]
+    if len(wrap(d, body, F_FOOT, RIGHT_W - 16)) > 3:
+        note("date check", "body > 3 lines")
+    # pin index: each label fits its column
+    colw = (RIGHT_W - 8) // 2
+    for num, _lon, _lat, _dx, _dy, label in PINS:
+        got = 16 + d.textlength(label, font=F_ALSO)
+        if got > colw:
+            note("pin #%d" % num, "%.0f px > %d" % (got, colw))
+    # ALSO list: one line each
     for num, place, text, region in ALSO:
         pre = "%d. %s: " % (num, place)
         got = d.textlength(pre, font=F_ALSO_B) + d.textlength(
             text, font=F_ALSO)
         if got > 490:
             note("also #%d" % num, "%.0f px > 490" % got)
-    for name, line in (("date check", DATE_CHECK), ("footer 1", FOOTER_L1),
-                       ("footer 2", FOOTER_L2)):
+    # footer lines
+    for name, line in (("footer 1", FOOTER_L1), ("footer 2", FOOTER_L2)):
         if d.textlength(line, font=F_FOOT) > CW:
             note(name, "%.0f px > %d"
                  % (d.textlength(line, font=F_FOOT), CW))
-    if d.textlength("Sunday, 22 November 2026", font=F_MAST) > CW:
-        note("masthead", "too wide")
+    # counts: 3 leads + 10 small + 24 also = 37; regions sum to 37
+    n_stories = len(LEADS) + len(SMALL) + len(ALSO)
+    if n_stories != 37:
+        note("story count", "%d != 37" % n_stories)
+    if sum(n for _, n in REGIONS) != 37:
+        note("region sum", "%d != 37" % sum(n for _, n in REGIONS))
+    if len(REGIONS) != 9:
+        note("region count", "%d != 9" % len(REGIONS))
     for p in problems:
         print("FIT PROBLEM:", p)
     print("fit check: %d problem(s), %d stories"
-          % (len(problems), 1 + len(CLIMATE_EXTRA) + len(POLITICS)
-             + len(INDONESIA) + len(SPORTS) + len(ALSO)))
+          % (len(problems), n_stories))
     return len(problems)
 
 
